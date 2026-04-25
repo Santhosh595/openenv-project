@@ -276,6 +276,7 @@ class REINFORCETrainer:
         n_episodes: int = 300,
         eval_every: int = 20,
         verbose: bool = True,
+        live_plot: bool = False,
     ) -> Dict[str, List[float]]:
         """
         Full training run. Returns history dict with:
@@ -288,11 +289,41 @@ class REINFORCETrainer:
         }
 
         best_eval = -float("inf")
+        fig = None
+        ax = None
+        line_train = None
+        line_smooth = None
+
+        if live_plot:
+            import matplotlib.pyplot as plt
+            plt.ion()
+            fig, ax = plt.subplots(figsize=(10, 5))
+            fig.suptitle(f"Live RL Training Curve ({self.task_id})", fontsize=14, fontweight="bold")
+            line_train, = ax.plot([], [], alpha=0.3, color="#4C9BE8", linewidth=1.0, label="Episode reward")
+            line_smooth, = ax.plot([], [], color="#1a5fa8", linewidth=2.0, label="Smoothed (MA)")
+            ax.set_xlabel("Training Episode", fontsize=11)
+            ax.set_ylabel("Cumulative Episode Reward", fontsize=11)
+            ax.grid(True, alpha=0.3)
+            ax.legend(fontsize=9, loc="upper left")
+            plt.show(block=False)
 
         for ep in range(1, n_episodes + 1):
             total_r, trajectory = self._run_episode(explore=True)
             self._policy_gradient_update(trajectory)
             history["train_rewards"].append(total_r)
+
+            if live_plot and line_train and line_smooth and ax and fig and ep % max(1, n_episodes // 100) == 0:
+                episodes_list = list(range(1, len(history["train_rewards"]) + 1))
+                line_train.set_data(episodes_list, history["train_rewards"])
+                window = max(1, len(history["train_rewards"]) // 20)
+                if len(history["train_rewards"]) >= window:
+                    smoothed = np.convolve(history["train_rewards"], np.ones(window)/window, mode="valid")
+                    sm_ep = episodes_list[window - 1:]
+                    line_smooth.set_data(sm_ep, smoothed)
+                ax.relim()
+                ax.autoscale_view()
+                fig.canvas.draw()
+                fig.canvas.flush_events()
 
             if ep % eval_every == 0:
                 eval_rewards = []
@@ -308,13 +339,18 @@ class REINFORCETrainer:
                     self.policy.save(f"policy_{self.task_id}_best")
 
                 if verbose:
-                    smoothed = float(np.mean(history["train_rewards"][-eval_every:]))
+                    smoothed_val = float(np.mean(history["train_rewards"][-eval_every:]))
                     print(
                         f"  Ep {ep:>4}/{n_episodes} | "
-                        f"train_avg={smoothed:+.3f} | "
+                        f"train_avg={smoothed_val:+.3f} | "
                         f"eval_mean={eval_mean:+.3f} | "
                         f"baseline={self.baseline:+.3f}"
                     )
+
+        if live_plot and fig:
+            import matplotlib.pyplot as plt
+            plt.ioff()
+            plt.close(fig)
 
         return history
 
@@ -431,8 +467,6 @@ def generate_plots(
       2. comparison_{task_id}.png       — random vs heuristic vs trained box plot
     Returns path to main plot.
     """
-    import matplotlib
-    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
@@ -526,6 +560,7 @@ def main():
     parser.add_argument("--plot-only",  action="store_true",
                         help="Regenerate plots from saved training_results.json")
     parser.add_argument("--outdir",     default=".", help="Output directory for plots")
+    parser.add_argument("--live",       action="store_true", help="Show real-time training graph")
     args = parser.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -573,6 +608,7 @@ def main():
             n_episodes=args.episodes,
             eval_every=max(10, args.episodes // 15),
             verbose=True,
+            live_plot=args.live,
         )
         elapsed = time.time() - t0
         print(f"  Training complete in {elapsed:.1f}s")
