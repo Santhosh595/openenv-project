@@ -1,0 +1,147 @@
+name: supply-chain-disruption-management
+version: "2.0.0"
+description: >
+  A multi-agent reinforcement learning environment simulating real-world
+  supply chain disruption management. Three cooperative AI agents (Producer,
+  Warehouse, Logistics) coordinate routing decisions across a global
+  logistics network under uncertainty — navigating port closures, weather,
+  supplier failures, and geopolitical disruptions — while balancing cost,
+  speed, and SLA compliance. Agents influence each other through typed
+  decision signals, creating genuine multi-agent interdependence.
+
+author: "Supply Chain AI Lab"
+license: MIT
+
+environment:
+  type: sequential_decision
+  domain: logistics
+  real_world: true
+  multi_agent: true
+
+  agents:
+    - id: producer_agent
+      role: "Supplier allocation & production buffer signals"
+      outputs: [recommended_supplier, buffer_signal, confidence]
+    - id: warehouse_agent
+      role: "Inventory positioning & safety stock strategy"
+      outputs: [target_warehouse, pre_position, safety_stock_days]
+    - id: logistics_agent
+      role: "Final routing decision (primary action interface)"
+      inputs_from: [producer_agent, warehouse_agent]
+      outputs: [routing_decision, reasoning]
+
+  observation_space:
+    type: structured
+    schema: Observation
+    fields:
+      - episode_day: integer
+      - max_days: integer
+      - nodes: list[NodeStatus]
+      - lanes: list[ShipmentLane]
+      - pending_orders: list[PendingOrder]
+      - active_disruptions: list[DisruptionEvent]
+      - budget_remaining: float
+      - cumulative_cost: float
+      - on_time_delivery_rate: float
+      - service_level: float
+      - weather_forecast: dict[str, float]
+      - spot_market_premium: float
+      - fulfilled_orders: integer
+      - total_orders: integer
+
+  action_space:
+    type: discrete_structured
+    schema: Action
+    fields:
+      - order_id: string
+      - routing_decision:
+          type: enum
+          values: [standard_route, express_route, spot_market, split_shipment,
+                   defer_24h, defer_48h, source_alternative, partial_fulfill]
+      - alternate_supplier: string | null
+      - reasoning: string | null
+
+  reward:
+    type: dense_decomposed
+    schema: Reward
+    range: [-1.0, 1.0]
+    components:
+      delay_score:        0.35
+      cost_score:         0.25
+      sla_score:          0.30
+      disruption_penalty: 0.10
+
+tasks:
+  - id: task_easy
+    name: "Single-Lane Routing Under Stable Conditions"
+    difficulty: easy
+    max_steps: 20
+    budget_usd: 500000
+    passing_score: 0.70
+    seed: 42
+    disruption_probability: 0.0
+
+  - id: task_medium
+    name: "Disruption Response with Budget Trade-offs"
+    difficulty: medium
+    max_steps: 60
+    budget_usd: 800000
+    passing_score: 0.60
+    seed: 99
+    disruption_probability: 0.25
+
+  - id: task_hard
+    name: "Cascading Disruptions Under Tight Budget Constraint"
+    difficulty: hard
+    max_steps: 130
+    budget_usd: 600000
+    passing_score: 0.50
+    seed: 7
+    disruption_probability: 0.45
+
+endpoints:
+  reset:            POST /reset?task_id={task_id}
+  step:             POST /step
+  state:            GET  /state?task_id={task_id}
+  observation:      GET  /observation?task_id={task_id}
+  grader:           POST /grader
+  baseline:         POST /baseline
+  tasks:            GET  /tasks
+  health:           GET  /health
+  demo:             GET  /demo?task_id={task_id}
+  multi_agent_step: POST /multi-agent/step
+  multi_agent_demo: GET  /multi-agent/demo?task_id={task_id}&steps={n}
+  reward_breakdown: GET  /reward-breakdown/{task_id}
+
+inference_script: inference.py
+training_script:  training.py
+demo_script:      demo.py
+
+grader:
+  type: deterministic
+  score_range: [0.0, 1.0]
+  criteria:
+    - on_time_delivery_rate
+    - budget_utilization
+    - mean_reward
+    - sla_compliance
+    - disruption_adaptation
+    - cost_per_unit
+
+network_topology:
+  suppliers: [SUP_CN_SHG, SUP_IN_MUM, SUP_MX_MTY]
+  warehouses: [WH_US_LAX, WH_EU_RTM, WH_SG_SIN]
+  demand_nodes: [DEM_US_CHI, DEM_DE_MUC, DEM_JP_TYO]
+  lanes: 12
+
+baseline_scores:
+  task_easy:   {agent: heuristic-baseline, score: 0.74, on_time_rate: 0.88}
+  task_medium: {agent: heuristic-baseline, score: 0.61, on_time_rate: 0.75}
+  task_hard:   {agent: heuristic-baseline, score: 0.48, on_time_rate: 0.58}
+
+training:
+  algorithm: REINFORCE
+  features: 10
+  actions: 8
+  policy: LinearSoftmax
+  colab_runtime: "< 5 minutes (free tier)"

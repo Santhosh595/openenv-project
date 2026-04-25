@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supply-chain-openenv"
+version = "1.0.0"
+description = "AI-powered Supply Chain Disruption Management OpenEnv"
+authors = [{ name = "SANTHOSH L , SANJAY SK , PRAVEEN" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openenv-core>=0.2.0"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools]
+py-modules = [
+    "environment",
+    "grader",
+    "models",
+    "tasks",
+    "baseline",
+    "inference"
+]
