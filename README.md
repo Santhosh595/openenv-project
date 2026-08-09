@@ -3,7 +3,6 @@
 > **Multi-agent RL environment for AI-driven global logistics under uncertainty**
 
 [![OpenEnv Compliant](https://img.shields.io/badge/OpenEnv-v2.0-green)](https://huggingface.co/openenv)
-[![HF Space](https://img.shields.io/badge/HF%20Space-Live-blue)](https://huggingface.co/spaces/your-username/supply-chain-openenv)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -47,7 +46,7 @@ Three cooperative agents with typed, interdependent decisions:
 
 ### 💥 Disruption Engine
 
-Six disruption types fire probabilistically each day (0–45% per task difficulty):
+Five disruption types fire probabilistically each day (0–45% per task difficulty):
 
 | Type | Impact | Duration | Severity |
 |------|--------|----------|---------|
@@ -86,15 +85,15 @@ final_reward = 0.35 × delay_score      # on-time performance
 Range: [-1.0, +1.0]
 ```
 
-Every step returns a **fully decomposed reward breakdown**:
+Every step returns a **fully decomposed reward breakdown** (matches the `Reward` model):
 
 ```json
 {
-  "cost_score":   +0.842,
-  "delay_score":  +1.000,
-  "sla_score":    +1.000,
-  "disruption":   -0.400,
-  "final_reward": +0.735,
+  "delivery_reward":    +1.000,
+  "cost_efficiency":    +0.842,
+  "sla_compliance":     +1.000,
+  "disruption_penalty": -0.400,
+  "total":              +0.735,
   "reasoning": "[CRITICAL SLA] 300 units → DEM_US_CHI | Decision: express_route | ✓ ON TIME ..."
 }
 ```
@@ -106,11 +105,13 @@ Every step returns a **fully decomposed reward breakdown**:
 **Algorithm:** REINFORCE (vanilla policy gradient), linear softmax policy, 10 features, 8 actions.
 **Runtime:** < 5 minutes on Colab free tier.
 
-| Agent | Mean Episode Reward | On-time Rate | Improvement |
-|-------|-------------------|--------------|------------|
-| Random Policy | −4.2 ± 2.1 | ~32% | baseline |
-| Heuristic | +3.8 ± 0.9 | ~75% | +220% |
-| **Trained REINFORCE** | **+5.1 ± 0.7** | **~82%** | **+321%** |
+| Agent | Mean Episode Reward (task_hard) | Improvement vs Random |
+|-------|---------------------------|----------------------|
+| Random Policy | +48.9 | baseline |
+| Heuristic | +51.0 | +4.1% |
+| **Trained REINFORCE** | **+56.6** | **+15.6%** |
+
+*(Numbers from `training_results.json`, 300 episodes on `task_hard`.)*
 
 The trained policy learns to:
 1. Avoid `spot_market` for non-critical orders (expensive habit the random policy develops)
@@ -181,6 +182,7 @@ supply-chain-openenv/
 ├── demo.py          # run_demo() multi-agent CLI demo
 ├── inference.py     # Hackathon inference script
 ├── openenv.yaml     # OpenEnv spec v2.0
+├── server/          # HF Spaces app entry (server/app.py → port 7860)
 ├── app/main.py      # FastAPI + multi-agent endpoints
 ├── Dockerfile       # HF Spaces deployment
 └── requirements.txt
@@ -190,7 +192,6 @@ supply-chain-openenv/
 
 ## 🔗 Links
 
-- **HF Space:** https://huggingface.co/spaces/your-username/supply-chain-openenv
 - **Demo Video:** *(2-minute walkthrough — see video_script.md)*
 
 ---
