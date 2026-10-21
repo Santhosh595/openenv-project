@@ -11,21 +11,35 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pydantic",
-    "openenv-core>=0.2.0"
+    "fastapi==0.142.2",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.13.5",
+    "openai==3.22.1",
+    "httpx==0.28.1",
+    "PyYAML==6.0.3",
+    "openenv-core>=0.2.0",
 ]
 
 [project.scripts]
 server = "server.app:main"
 
 [tool.setuptools]
+# Kept in sync with requirements.txt. agents, demo and training are real
+# top-level modules in this repo and were missing here, so a built wheel
+# silently omitted them.
 py-modules = [
     "environment",
     "grader",
     "models",
     "tasks",
     "baseline",
-    "inference"
+    "inference",
+    "agents",
+    "demo",
+    "training",
 ]
+
+# `server/app.py` does `from app.main import app`, and `app` is a package
+# (app/__init__.py), which py-modules cannot express -- so the built wheel
+# shipped a console script that died with ModuleNotFoundError: app.
+packages = ["app", "server"]
