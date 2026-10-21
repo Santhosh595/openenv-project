@@ -3,6 +3,8 @@
 > **Multi-agent RL environment for AI-driven global logistics under uncertainty**
 
 [![OpenEnv Compliant](https://img.shields.io/badge/OpenEnv-v2.0-green)](https://huggingface.co/openenv)
+[![CI](https://github.com/Santhosh595/openenv-project/actions/workflows/ci.yml/badge.svg)](https://github.com/Santhosh595/openenv-project/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -138,6 +140,22 @@ python demo.py --task task_medium --steps 10
 # Train & plot
 python training.py --task task_medium
 ```
+
+### Run tests
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+pip install pytest
+pytest tests/
+```
+
+The suite covers the environment the trained policy is graded against: the
+scenario and action-space definitions, the cost and transit tables, reset
+determinism, and the reward for a malformed action. The environment is seeded
+and does no network I/O, so the suite runs offline and deterministically.
+
+It runs in CI on Python 3.10, 3.11 and 3.12.
 
 ### Key API Endpoints
 
